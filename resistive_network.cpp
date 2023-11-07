@@ -1,6 +1,16 @@
 #include "resistive_network.h"
+#include "error.h"
 
-resistive_network::resistive_network(int interface_size_, int connection_size_) {
+resistive_network::resistive_network() {
+}
+
+resistive_network::~resistive_network() {
+}
+
+void resistive_network::init(int interface_size_, int connection_size_) {
+    if (connection_size_ < interface_size_ - 1) {
+        throw resistive_network_error("The resistive network should be connected.");
+    }
     interface_size = interface_size_;
     connection_size = connection_size_;
     interface_current = matrix(1, interface_size);
@@ -9,15 +19,19 @@ resistive_network::resistive_network(int interface_size_, int connection_size_) 
     conduction = matrix(connection_size, connection_size);
 }
 
-resistive_network::~resistive_network() = default;
-
 void resistive_network::set_resistance() {
+    if (fix_resistance) {
+        throw resistive_network_error("There is already a connection. Clear first.");
+    }
+    std::cout << "You should set " << connection_size << " resistances.\n";
+    std::cout << "Please type in the following format: [interface1] [interface2] [resistance]" << std::endl;
     int from, to;
     fraction resistance;
     for (int i = 0; i < connection_size; ++i) {
         std::cin >> from >> to >> resistance;
         if (from == to) {
-            throw std::exception();
+            throw resistive_network_error(
+                    "It is not allowed to connect both ends of the wiring to the same interface.");
         }
         if (from > to) {
             std::swap(from, to);
@@ -28,22 +42,33 @@ void resistive_network::set_resistance() {
     }
     laplace = adjacency.transposition() * conduction * adjacency;
     det = laplace.cofactor(connection_size - 1, connection_size - 1).determination();
+    if (det == 0) {
+        clear_all();
+        throw resistive_network_error("The resistive network should be connected.");
+    }
+    fix_resistance = true;
 }
 
 fraction resistive_network::get_equivalent_resistance(int interface_id1, int interface_id2) {
+    if (!fix_resistance) {
+        throw resistive_network_error("The interfaces are not connected yet.");
+    }
+    if (interface_id1 >= interface_size || interface_id1 < 0 ||
+        interface_id2 >= interface_size || interface_id2 < 0) {
+        throw resistive_network_error("Invalid interface id.");
+    }
     if (interface_id1 == interface_id2) {
         return 0;
     }
     if (interface_id1 > interface_id2) {
         std::swap(interface_id1, interface_id2);
     }
-
     return laplace.cofactor(interface_id2, interface_id2).cofactor(interface_id1, interface_id1).determination() / det;
 }
 
 fraction resistive_network::set_current(int id, fraction current) {
     if (input_voltage) {
-        throw std::exception();
+        throw resistive_network_error("The currents have been set already.");
     }
     input_current = true;
     interface_current(0, id) = current;
@@ -51,7 +76,7 @@ fraction resistive_network::set_current(int id, fraction current) {
 
 fraction resistive_network::get_current() {
     if (!input_voltage) {
-        throw std::exception();
+        throw resistive_network_error("The voltages have been set already.");
     }
     interface_current = (laplace * interface_voltage.transposition()).transposition();
     fix_current = true;
@@ -59,7 +84,7 @@ fraction resistive_network::get_current() {
 
 void resistive_network::display_current() {
     if (!fix_current) {
-        throw std::exception();
+        get_current();
     }
     std::cout << "display current (regard inflow as positive):" << std::endl;
     for (int i = 0; i < interface_size; ++i) {
@@ -69,7 +94,10 @@ void resistive_network::display_current() {
 
 fraction resistive_network::set_voltage(int id, fraction voltage) {
     if (input_current) {
-        throw std::exception();
+        throw resistive_network_error("The currents have been set already.");
+    }
+    if (id >= interface_size || id < 0) {
+        throw resistive_network_error("Invalid interface id.");
     }
     input_voltage = true;
     interface_voltage(0, id) = voltage;
@@ -77,14 +105,14 @@ fraction resistive_network::set_voltage(int id, fraction voltage) {
 
 fraction resistive_network::get_voltage(int id, fraction voltage) {
     if (!input_current) {
-        throw std::exception();
+        throw resistive_network_error("The voltages have been set already.");
     }
     fraction sum = 0;
     for (int i = 0; i < interface_size; ++i) {
         sum = sum + interface_current(0, i);
     }
     if (!(sum == 0)) {
-        throw std::exception();
+        throw resistive_network_error("Invalid currents setting.");
     }
     matrix tmp = laplace.cofactor(interface_size - 1, interface_size - 1);
     for (int j = 0; j < interface_size - 1; ++j) {
@@ -106,7 +134,7 @@ fraction resistive_network::get_voltage(int id, fraction voltage) {
 
 void resistive_network::display_voltage() {
     if (!fix_voltage) {
-        throw std::exception();
+        set_voltage(0, 0);
     }
     std::cout << "display voltage:" << std::endl;
     for (int i = 0; i < interface_size; ++i) {
@@ -116,7 +144,7 @@ void resistive_network::display_voltage() {
 
 fraction resistive_network::display_power() {
     if (!input_current && !input_voltage) {
-        throw std::exception();
+        throw resistive_network_error("The currents and voltages are not set yet.");
     }
     if (input_current && !fix_voltage) {
         get_voltage(0, 0);

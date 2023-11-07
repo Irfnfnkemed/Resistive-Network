@@ -13,13 +13,16 @@ private:
     matrix conduction;
     matrix laplace;
     fraction det;//laplace矩阵去除第i行、第i列后的矩阵行列式（与i无关）
+    bool fix_resistance = false;//表示已经连上电阻（构成连通网络）
     bool input_current = false, input_voltage = false;//表示将输入电流/电压
     bool fix_current = false, fix_voltage = false;//表示电流/电压已经通过计算确定，可以打印
 
 public:
-    resistive_network(int interface_size_, int connection_size_);
+    resistive_network();
 
     ~resistive_network();
+
+    void init(int interface_size_, int connection_size_);
 
     void set_resistance();
 

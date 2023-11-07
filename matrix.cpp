@@ -1,5 +1,5 @@
 #include "matrix.h"
-
+#include "error.h"
 
 matrix::matrix() {
     m = n = 0;
@@ -95,7 +95,7 @@ matrix matrix::transposition() {
 
 matrix operator*(const matrix &lhs, const matrix &rhs) {
     if (lhs.n != rhs.m) {
-        throw std::exception();
+        throw matrix_error("Matrices cannot be multiplied.");
     }
     matrix product = matrix(lhs.m, rhs.n);
     for (int i = 0; i < product.m; ++i) {
@@ -114,6 +114,9 @@ matrix operator*(const matrix &lhs, const matrix &rhs) {
 }
 
 fraction &matrix::operator()(int i, int j) {
+    if (i >= m || j >= n || i < 0 || j < 0) {
+        throw matrix_error("Out of valid matrix index.");
+    }
     return data[i][j];
 }
 
@@ -140,9 +143,9 @@ fraction matrix::determination() {
     int swap_num = 0;
     fraction det = 1;
     if (m != n) {
-        throw std::exception();
+        throw matrix_error("Matrices is not square.");
     }
-    fraction **backup = new fraction *[n];
+    auto **backup = new fraction *[n];
     for (int i = 0; i < n; ++i) {
         backup[i] = new fraction[n];
     }
@@ -191,8 +194,8 @@ fraction matrix::determination() {
 }
 
 matrix matrix::cofactor(int row, int col) {
-    if (m != n) {
-        throw std::exception();
+    if (row >= m || col >= n || row < 0 || col < 0) {
+        throw matrix_error("Out of valid matrix index.");
     }
     matrix tmp = matrix(n - 1, n - 1);
     for (int i = 0; i < row; ++i) {

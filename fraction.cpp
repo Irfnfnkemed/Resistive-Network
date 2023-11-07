@@ -1,4 +1,5 @@
 #include "fraction.h"
+#include "error.h"
 
 long long fraction::gcd(long long lhs, long long rhs) {
     if (lhs > rhs) { std::swap(lhs, rhs); }
@@ -32,7 +33,7 @@ fraction::fraction(long long num) {
 
 fraction::fraction(long long numerator_, long long denominator_) {
     if (denominator == 0) {
-        throw std::exception();
+        throw fraction_error("Zero denominator.");
     }
     numerator = std::abs(numerator_);
     denominator = std::abs(denominator_);
@@ -42,14 +43,13 @@ fraction::fraction(long long numerator_, long long denominator_) {
 
 fraction::fraction(long long numerator_, long long denominator_, bool sign_) {
     if (denominator_ == 0) {
-        throw std::exception();
+        throw fraction_error("Zero denominator.");
     }
     numerator = numerator_;
     denominator = denominator_;
     sign = sign_;
     reduction();
 }
-
 
 std::istream &operator>>(std::istream &in, fraction &obj) {
     std::string data;
@@ -61,15 +61,19 @@ std::istream &operator>>(std::istream &in, fraction &obj) {
             break;
         }
     }
-    if (pos != -1) {
-        numerator_ = std::stoi(data.substr(0, pos));
-        denominator_ = std::stoi(data.substr(pos + 1, data.length() - pos - 1));
-    } else {
-        numerator_ = std::stoi(data);
-        denominator_ = 1;
+    try {
+        if (pos != -1) {
+            numerator_ = std::stoi(data.substr(0, pos));
+            denominator_ = std::stoi(data.substr(pos + 1, data.length() - pos - 1));
+        } else {
+            numerator_ = std::stoi(data);
+            denominator_ = 1;
+        }
+    } catch (...) {
+        throw fraction_error("Invalid input.");
     }
     if (denominator_ == 0) {
-        throw std::exception();
+        throw fraction_error("Zero denominator.");
     }
     obj.numerator = std::abs(numerator_);
     obj.denominator = std::abs(denominator_);
@@ -128,7 +132,7 @@ fraction operator*(const fraction &lhs, const fraction &rhs) {
 
 fraction operator/(const fraction &lhs, const fraction &rhs) {
     if (rhs.numerator == 0) {
-        throw std::exception();
+        throw fraction_error("Divided by zero.");
     }
     return {lhs.numerator * rhs.denominator, lhs.denominator * rhs.numerator,
             !(lhs.sign ^ rhs.sign)};
